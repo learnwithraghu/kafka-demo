@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopping Cart - Toy Store</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav>
+        <h1>Shopping Cart</h1>
+        <a href="{{ url_for('index') }}">Continue Shopping</a>
+    </nav>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <div class="flash-message">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="cart-container">
+        {% if cart_items %}
+            <table class="cart-table">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Price</th>
+                        <th>Quantity</th>
+                        <th>Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for id, item in cart_items.items() %}
+                    <tr>
+                        <td>{{ item.name }}</td>
+                        <td>${{ "%.2f"|format(item.price) }}</td>
+                        <td>{{ item.quantity }}</td>
+                        <td>${{ "%.2f"|format(item.subtotal) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="3"><strong>Total:</strong></td>
+                        <td>${{ "%.2f"|format(total) }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+
+            <div class="delivery-info">
+                <p>Estimated Delivery Date: {{ delivery_date }}</p>
+            </div>
+
+            <form action="{{ url_for('place_order') }}" method="post" class="checkout-form">
+                <button type="submit" class="checkout-button">Place Order</button>
+            </form>
+        {% else %}
+            <p class="empty-cart">Your cart is empty.</p>
+            <a href="{{ url_for('index') }}" class="continue-shopping">Continue Shopping</a>
+        {% endif %}
+    </div>
+</body>
+</html>
