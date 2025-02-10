@@ -1,4 +1,4 @@
 Flask==2.2.3
 python-dotenv==1.0.0
 Werkzeug==2.2.3
-kafka-python==2.0.2
+confluent-kafka

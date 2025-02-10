@@ -1,6 +1,31 @@
 from flask import Flask, render_template, request, redirect, url_for
+from confluent_kafka import Producer
+import json
+import logging
+import socket
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+
+# Kafka producer configuration
+conf = {
+    'bootstrap.servers': '3.68.92.91:9092',
+    'client.id': socket.gethostname()
+}
+
+# Initialize producer instance
+producer = Producer(conf)
+
+# Delivery callback
+def delivery_callback(err, msg):
+    if err:
+        logger.error(f'Message delivery failed: {err}')
+    else:
+        logger.info(f'Message delivered to {msg.topic()} [{msg.partition()}] at offset {msg.offset()}')
+        logger.info(f'Message timestamp: {msg.timestamp()}')
 
 # Sample product data
 products = [
@@ -31,12 +56,42 @@ def view_cart():
 
 @app.route('/place_order', methods=['POST'])
 def place_order():
-    name = request.form['name']
-    address = request.form['address']
-    # Here you would typically send the order details to Kafka
-    # For now, we'll just clear the cart and show a confirmation message
-    cart.clear()
-    return render_template('order.html', name=name)
+    try:
+        name = request.form['name']
+        address = request.form['address']
+        
+        # Prepare the event payload
+        order_event = {
+            'customer_name': name,
+            'delivery_address': address,
+            'products': cart,
+            'total_amount': sum(item['price'] for item in cart)
+        }
+        
+        # Convert the event to JSON string
+        event_string = json.dumps(order_event)
+        
+        # Log the event being sent
+        logger.info(f"Sending order event to Kafka: {event_string}")
+        
+        # Produce the message to Kafka
+        producer.produce(
+            topic='cartevent',
+            value=event_string.encode('utf-8'),
+            callback=delivery_callback
+        )
+        
+        # Wait for message delivery
+        producer.flush()
+        
+        # Clear the cart after successful order placement
+        cart.clear()
+        
+        return render_template('order.html', name=name)
+    
+    except Exception as e:
+        logger.error(f"Failed to process order: {str(e)}")
+        return render_template('error.html', error=str(e))
 
 if __name__ == '__main__':
     app.run(debug=True)
